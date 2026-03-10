@@ -1,13 +1,15 @@
-# 2048 - Sprint 2
+# 2048 - Sprint 3
 # Amin Torrisi
-# a partir de l'exemple du prof labels_place.py
 from tkinter import *
+import random
+import math
 
-# je met toutes les valeurs dans la grille 
-grille = [[2,    2,    8,   16],
-          [32,   64,  128,  256],
-          [512, 1024, 2048,   0],
-          [0,     0,    0,    0]]
+
+# la grille commence vide, on ajoutera 2 tuiles au hasard au lancement
+grille = [[0, 0, 0, 0],
+          [0, 0, 0, 0],
+          [0, 0, 0, 0],
+          [0, 0, 0, 0]]
 
 # chaque nombre a sa propre couleur
 couleurs = {
@@ -56,22 +58,54 @@ for line in range(4):
         labels[line][col].place(x=x0 + largeur * col, y=y0 + hauteur * line)
         
 #Approche d'une fonction pack4 qui tasse 4 valeurs a,b,c,d vers la gauche comme le jeu 2048
+# retourne (a, b, c, d, deplacements, fusions)
 def pack4(a,b,c,d):
-    # tasser les zeros vers la droite
-    if a == 0:
-        a,b,c,d = b,c,d,0
-    if b == 0:
-        b,c,d = c,d,0
-    if c == 0:
-        c,d = d,0
-    # fusionner les paires egales
-    if a == b:
-        a,b,c,d = 2*a,c,d,0
-    if b == c:
-        b,c,d = 2*b,d,0
-    if c == d:
-        c,d = 2*c,0
-    return a,b,c,d
+    deplacements = 0
+    fusions = 0
+    # on met les valeurs non nulles dans une liste, puis on complete avec des zeros
+    vals = [x for x in [a,b,c,d] if x != 0]
+    # compter les deplacements (cases qui ont change de position)
+    while len(vals) < 4:
+        vals.append(0)
+    # fusionner les paires egales de gauche a droite
+    result = []
+    i = 0
+    while i < 4:
+        if i < 3 and vals[i] != 0 and vals[i] == vals[i+1]:
+            result.append(2 * vals[i])
+            fusions += 1
+            i += 2
+        else:
+            result.append(vals[i])
+            i += 1
+    while len(result) < 4:
+        result.append(0)
+    # compter les deplacements
+    original = [a,b,c,d]
+    for j in range(4):
+        if result[j] != original[j]:
+            deplacements += 1
+    return result[0], result[1], result[2], result[3], deplacements, fusions
+
+# cette fonction ajoute une tuile (2 ou 4) sur une case vide au hasard
+def ajouter_tuile():
+    # on cherche toutes les cases vides dans la grille
+    cases_vides = []
+    for line in range(4):
+        for col in range(4):
+            if grille[line][col] == 0:
+                cases_vides.append((line, col))
+
+    # si il reste au moins une case vide
+    if len(cases_vides) > 0:
+        # on choisit une case vide au hasard avec random.choice
+        line, col = random.choice(cases_vides)
+
+        # 90% de chance d'avoir un 2, 10% d'avoir un 4
+        if random.randint(1, 10) == 1:
+            grille[line][col] = 4
+        else:
+            grille[line][col] = 2
 
 # cette fonction met a jour l'affichage de la grille
 def display():
@@ -103,32 +137,40 @@ def deplacement(event):
         # on tasse chaque ligne vers la gauche
         for line in range(4):
             a,b,c,d = grille[line][0], grille[line][1], grille[line][2], grille[line][3]
-            grille[line][0], grille[line][1], grille[line][2], grille[line][3] = pack4(a,b,c,d)
+            grille[line][0], grille[line][1], grille[line][2], grille[line][3], dep, fus = pack4(a,b,c,d)
 
     elif touche == "Right":
         # vers la droite = on inverse, on tasse a gauche, on re-inverse
         for line in range(4):
             a,b,c,d = grille[line][3], grille[line][2], grille[line][1], grille[line][0]
-            grille[line][3], grille[line][2], grille[line][1], grille[line][0] = pack4(a,b,c,d)
+            grille[line][3], grille[line][2], grille[line][1], grille[line][0], dep, fus = pack4(a,b,c,d)
 
     elif touche == "Up":
         # vers le haut on fait pareil mais avec les colonnes
         for col in range(4):
             a,b,c,d = grille[0][col], grille[1][col], grille[2][col], grille[3][col]
-            grille[0][col], grille[1][col], grille[2][col], grille[3][col] = pack4(a,b,c,d)
+            grille[0][col], grille[1][col], grille[2][col], grille[3][col], dep, fus = pack4(a,b,c,d)
 
     elif touche == "Down":
         # vers le bas on inverse les colonnes
         for col in range(4):
             a,b,c,d = grille[3][col], grille[2][col], grille[1][col], grille[0][col]
-            grille[3][col], grille[2][col], grille[1][col], grille[0][col] = pack4(a,b,c,d)
+            grille[3][col], grille[2][col], grille[1][col], grille[0][col], dep, fus = pack4(a,b,c,d)
+
+    # on ajoute une nouvelle tuile apres chaque deplacement
+    ajouter_tuile()
 
     # on met a jour l'affichage apres chaque deplacement
     display()
 
 win.bind("<Key>", deplacement)
 
-print(pack4(4,0,4,8))
+print(pack4(4,0,4,8))    # attendu: (8, 8, 0, 0,)
+print(pack4(0,0,0,8))    # attendu: (8, 0, 0, 0,)
+
+# on ajoute 2 tuiles au hasard pour commencer la partie
+ajouter_tuile()
+ajouter_tuile()
 
 # on appelle display pour afficher la grille
 display()
